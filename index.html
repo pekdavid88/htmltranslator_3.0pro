@@ -4,17 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEO Termékkategória Leírás Generátor</title>
-    <!-- Tailwind CSS (Aesthetics) -->
+    <title>SEO HTML Fordító Asszisztens</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* Egyedi stílusok */
+        /* Egyedi stílusok a Lucide ikonokhoz és a betűtípushoz */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7fafc;
-            /* Light gray background */
         }
 
         .icon {
@@ -24,102 +20,28 @@
             stroke-linejoin: round;
             fill: none;
         }
-
-        /* Minta CSS-ek a kimenethez (opcionális, de jó látni a struktúrát) */
-        .article-bulletin {
-            background-color: #f0f7ff;
-            border-left: 5px solid #0066cc;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .zarovka100 {
-            background-color: #fffff0;
-            border: 1px dashed #ffc000;
-            padding: 10px;
-            margin: 20px 0;
-            font-size: 0.9em;
-            color: #4a4a4a;
-        }
-
-        .or_advantages {
-            background-color: #e6ffed;
-            padding: 15px;
-            border-radius: 4px;
-        }
-
-        .or_advantages ul {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        .or_advantages ul li:before {
-            content: '✓';
-            color: #008000;
-            font-weight: bold;
-            display: inline-block;
-            width: 1em;
-            margin-left: -1em;
-        }
-
-        figure {
-            margin: 20px 0;
-            text-align: center;
-        }
-
-        figcaption {
-            font-style: italic;
-            font-size: 0.9em;
-            color: #6b7280;
-            margin-top: 5px;
-        }
     </style>
 </head>
 
-<body>
+<body class="bg-gray-50">
 
     <div id="root" class="min-h-screen p-4 md:p-8">
-        <!-- Az alkalmazás tartalmát ide rendereli a JS -->
+        <div
+            class="max-w-6xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[700px]">
+            <div class="flex-1 flex items-center justify-center p-12">
+                <svg class="animate-spin h-8 w-8 text-slate-800" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                    </path>
+                </svg>
+                <span class="ml-3 text-lg font-medium text-slate-800">Alkalmazás betöltése...</span>
+            </div>
+        </div>
     </div>
 
     <script>
-        // --- KÖTELEZŐ HTML ELŐTAG (LINK ÉS STÍLUSOK) ---
-        const MANDATORY_HTML_PREFIX = `
-<link href="https://cdn.alza.hu/Foto/LegendFoto/EN/Files/css/_or_nastroje.css" rel="stylesheet" />
-
-<style type="text/css">
-	div.imgwrapper {
-		display: -ms-flexbox; display: -webkit-flex; display: flex; -webkit-justify-content: center; -ms-flex-pack: center; justify-content: center;
-	}
-
-	p.imgbox {
-		text-align: center; font-size: 13px; font-weight: 800; -webkit-flex: 1 1 auto; -ms-flex: 1 1 auto; flex: 1 1 auto; margin-right: 2%;
-	}
-
-	p.imgbox:last-child {
-		margin-right: 0;
-	}
-
-	p.imgbox img {
-		max-width: 100%;
-	}
-
-	p.imgbox a img {
-		max-width: 100%;
-	}
-
-	.categoryPage .category-description .imgwrapper a,
-	.categoryPage .category-description .imgwrapper {
-		color: #00275a; text-decoration: none;
-	}
-
-	.categoryPage .category-description .imgwrapper a:hover {
-		text-decoration: underline;
-	}
-</style>
-`;
-
         // --- Segédfüggvények ---
 
         // Lucide ikonok betöltése
@@ -131,134 +53,107 @@
 
         // --- State és Adatok ---
         let state = {
-            activeTab: 'keywords', // keywords, generate
+            activeTab: 'input', // input, keywords, translate
+            htmlInput: '',
             rawKeywords: '',
-            categoryTopic: '',
-            additionalContext: '', // Kiegészítő kontextus
             parsedKeywords: [],
+            tone: 'persuasive',
             apiKey: '',
-            isGenerating: false,
-            generationResult: '',
+            isTranslating: false,
+            translationResult: '',
             error: '',
             showPromptPreview: false,
-            // Alapértelmezett a kérés szerint
-            modelName: 'gemini-2.5-flash-preview-09-2025',
+            modelName: 'gemini-2.0-flash',
+            stats: { chars: 0, tags: 0 },
         };
 
-        // Frissített modell lista a kérés szerint
         const models = [
-            { name: 'gemini-2.5-flash-preview-09-2025', label: 'Flash 2.5 (Ajánlott, Gyors, Képzett)' },
-            { name: 'gemini-3-flash-preview', label: '3 Flash' },
-            { name: 'gemini-2.5-pro', label: 'Pro 2.5 (Erős, Kiegyensúlyozott)' },
-            { name: 'gemini-3.1-pro-preview', label: 'Pro 3.1 (Csúcsmodell - Preview)' },
+            { name: 'gemini-2.0-flash', label: 'Flash 2.0 (Gyors, jó minőségű, alapértelmezett)' },
+            { name: 'gemini-2.5-flash', label: 'Flash 2.5 (Új, legjobb minőség a gyors modellek közül)' },
+            { name: 'gemini-2.5-pro', label: 'Pro 2.5 (Kiemelkedő minőség, professzionális fordításhoz)' },
+            { name: 'gemini-3.1-pro-preview', label: 'Pro 3.1 Preview (A legújabb kísérleti modell)' },
         ];
 
         // --- Adatfeldolgozás és Logic ---
+
+        function updateStats() {
+            const charCount = state.htmlInput.length;
+            const tagCount = (state.htmlInput.match(/<[^>]+>/g) || []).length;
+            state.stats = { chars: charCount, tags: tagCount };
+        }
 
         function parseKeywords() {
             const lines = state.rawKeywords.split('\n');
             const parsed = lines.map(line => {
                 const trimmed = line.trim();
-                if (!trimmed || trimmed.indexOf('=') === -1) return null;
-
-                const parts = trimmed.split('=');
-                if (parts.length !== 2) return null;
-
-                const keyword = parts[0].trim();
-                const volume = parseInt(parts[1].trim(), 10);
-
-                if (!keyword || isNaN(volume)) return null;
-
-                return { word: keyword, volume: volume };
-
+                if (!trimmed) return null;
+                const match = trimmed.match(/(.+)\s+(\d+)$/);
+                if (match) {
+                    return { word: match[1].trim(), volume: parseInt(match[2], 10) };
+                } else {
+                    return { word: trimmed, volume: 0 };
+                }
             }).filter(item => item !== null);
             parsed.sort((a, b) => b.volume - a.volume);
             state.parsedKeywords = parsed;
         }
 
-        // Új segédfüggvény a teljes prompt karakterszámának meghatározására
-        function getInputCharCount() {
-            // Visszaadja a teljes, az API-nak elküldött prompt hosszát
-            return constructPrompt().length;
-        }
-
-        // Új segédfüggvény a generált kimenet karakterszámának meghatározására
-        function getOutputCharCount() {
-            // Visszaadja a generált HTML kimenet hosszát
-            return state.generationResult.length;
-        }
-
-
         function constructPrompt() {
             const keywordList = state.parsedKeywords
-                .map(k => `${k.word}=${k.volume}`)
-                .join(', ');
+                .map(k => `- "${k.word}" (Havi keresési volumen: ${k.volume})`)
+                .join('\n');
 
-            const contextSection = state.additionalContext.trim()
-                ? `\nKIEGÉSZÍTŐ INFORMÁCIÓK / ALKATEGÓRIA KÖVETELMÉNYEK:\n---\n${state.additionalContext.trim()}\n---\nA szövegben (lehetőleg <h3> vagy <h4> alcímek alatt) építsd be a fent megadott alkategóriákat, használva az ott megadott URL-eket a bekezdésekben lévő releváns szövegrészekhez. Használj kreatív alcímeket a megadott alkategóriákhoz!`
-                : '\nKIEGÉSZÍTŐ INFORMÁCIÓK / ALKATEGÓRIA KÖVETELMÉNYEK: Nem adtál meg kiegészítő információkat. Generáld a leírást csak a témakör és kulcsszavak alapján.';
+            const toneInstruction = state.tone === 'persuasive'
+                ? 'Meggyőző marketing szöveg, amely vásárlásra ösztönöz.'
+                : state.tone === 'technical'
+                    ? 'Szakmailag precíz, a specifikációkra fókuszáló szöveg.'
+                    : 'Semleges, objektív tájékoztató szöveg.';
 
             return `
 SZEREP:
-Profi SEO szövegíró, weboldal szerkesztő és HTML kód szakértő vagy.
+Professzionális SEO szövegíró és fordító vagy.
 
 FELADAT:
-Hozz létre egy teljes termékkategória leírást HTML kód formájában, a megadott kategória témája (${state.categoryTopic || 'a kulcsszavakhoz kapcsolódó termékkategória'}) és a mellékelt kulcsszavak és keresési gyakoriságuk alapján.
+Fordítsd le az alábbi HTML kódban található szövegeket cseh nyelvről magyarra.
 
-KATEGÓRIA TÉMA (fő cél):
-${state.categoryTopic}
+FONTOS: STÍLUS ÉS HANGNEM:
+1. **TEGEZŐDŐ (INFORMAL) STÍLUS:** Mindig tegezd az olvasót (pl. "Vedd meg", "Nézd meg", "A te választásod"). Kerüld a magázást.
+2. Hangulat: ${toneInstruction}
+3. A magyar szöveg legyen folyékony, természetes és helyesírásilag hibátlan.
+
+SZIGORÚ TECHNIKAI SZABÁLYOK:
+1. A HTML struktúrát NE módosítsd. Minden <div>, class, id maradjon változatlan.
+2. Csak a címkék közötti tartalmat (innerText) és a képek 'alt' attribútumát fordítsd.
+3. NE használj Markdown kódblokkokat (pl. \`\`\`html) a válaszban, csak a nyers HTML szöveget küldd vissza.
+
+SEO ÉS KULCSSZÓ STRATÉGIA (ARÁNYOSÍTÁS):
+A kulcsszavakat **a volumennel arányosan** építsd be:
+- Magas volumenű szavak: Címsorokban, szöveg elején, sűrűbben.
+- Alacsony volumenű szavak: Ritkábban, szinonimaként.
 
 KULCSSZÓ ADATBÁZIS:
-${keywordList}
-    
-${contextSection}
+${keywordList || 'Nincs kulcsszó megadva. Az AI dönti el a legrelevánsabb kulcsszavakat.'}
 
-MINTA ÉS KÖTELEZŐ HTML STRUKTÚRA:
-A kód felépítése legyen hasonló a mintákhoz, és SZIGORÚAN tartalmaznia kell a következő elemeket (mindig használj nyitó és záró tag-eket, pl. <h2>...</h2>):
-1.  Egy bevezető bekezdés (<p>...</p>).
-2.  Egy főcímet (<h2>...</h2>).
-3.  Legalább két alcímet (<h3>...</h3>), beleértve az esetleges alkategóriákat.
-4.  Legalább három normál bekezdést (<p>...</p>).
-5.  Legalább egy felsorolást (<ul><li>...</li></ul> vagy <ol><li>...</li></ol>).
-6.  Egy képblokkot (kötelezően <figure> és ezen belül <img alt="alt_szöveg" src="placeholder_URL" width="900" height="230" /> és <figcaption><p>...</p></figcaption> elemekkel. A 'src' attribútumhoz használj egy PLACEHOLDER URL-t (pl. https://placehold.co/900x230/90EE90/000000?text=Kep_Placeholder).
-7.  Legalább egy kiemelt információs dobozt (pl. <div class="article-bulletin">...</div> vagy <div class="or_advantages">...</div>).
-8.  Legalább egy érdekességet/fun fact-et, amely KIZÁRÓLAG egy <p class="zarovka100">...</p> bekezdésbe kerül.
-
-FONTOS TARTALMI ÉS STÍLUSSZABÁLYOK:
-1.  **STÍLUS ÉS HANGNEM:** Mindig TEGEZŐDŐ (INFORMAL) stílust használj.
-2.  **KULCSSZÓ INTEGRÁCIÓ:** A kulcsszavakat a keresési gyakoriságuk (szám) arányában oszd el a szövegben. A legnagyobb számú kulcsszó jelenjen meg a főcímben, alcímekben, bekezdésekben (sűrűbben), míg a kisebb számú kulcsszavak ritkábban.
-3.  **MEGFOGALMAZÁS:** A szöveg stílusa legyen informatív, olvasóbarát és SEO-optimalizált, de természetes.
-4.  **KIEMELÉS:** A megadott kulcsszavak NE legyenek kiemelve semmilyen formában a szövegben (pl. nincs <strong>, <b>, vagy class attribútum a kulcsszavakon).
-
-TECHNIKAI KÖVETELMÉNYEK:
-1.  A válaszod KIZÁRÓLAG a generált HTML kódot tartalmazza.
-2.  NE használj Markdown kódblokkokat (pl. \`\`\`html) a válaszban, csak a nyers HTML szöveget küldd vissza.
-3.  NE tartalmazza a <link> és <style> blokkokat, csak a <body> tartalmat! A link/stílus blokkot a kliens oldali alkalmazás adja hozzá az elejére.
+BEMENETI HTML KÓD:
+${state.htmlInput}
     `;
         }
 
         // API hívás
-        async function handleGeneration() {
+        async function handleTranslation() {
             if (!state.apiKey) {
                 updateState({ error: 'Kérlek add meg a Gemini API kulcsodat!' });
                 return;
             }
-            if (!state.categoryTopic) {
-                updateState({ error: 'Kérlek add meg a kategória témáját!' });
-                return;
-            }
-            if (state.parsedKeywords.length === 0) {
-                updateState({ error: 'Kérlek add meg a kulcsszavakat "kulcsszó=szám" formátumban!' });
-                return;
-            }
-            updateState({ error: '', isGenerating: true, generationResult: '' });
+            updateState({ error: '', isTranslating: true, translationResult: '' });
 
             const prompt = constructPrompt();
 
             try {
+                // MODELL NEVÉNEK HASZNÁLATA
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${state.modelName}:generateContent?key=${state.apiKey}`;
 
-                // Exponenciális visszalépés (Exponential Backoff)
+                // Exponenciális visszalépés (Exponential Backoff) megvalósítása
                 const maxRetries = 5;
                 let attempt = 0;
                 let response = null;
@@ -272,11 +167,12 @@ TECHNIKAI KÖVETELMÉNYEK:
                             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                         });
 
-                        if (response.status !== 429) {
-                            break;
+                        if (response.status !== 429) { // 429: Too Many Requests (ide kell a retry)
+                            break; // Sikeres válasz vagy nem 429 hiba
                         }
 
                     } catch (fetchError) {
+                        // Hálózati hiba (pl. nincs internet) esetén ismétlés
                         if (attempt === maxRetries - 1) throw fetchError;
                     }
 
@@ -306,21 +202,18 @@ TECHNIKAI KÖVETELMÉNYEK:
                 if (data.candidates && data.candidates[0].content) {
                     let generatedText = data.candidates[0].content.parts[0].text;
 
-                    // Tisztítás: eltávolítjuk a potenciális markdown blokkot
+                    // Tisztítás: Ha mégis rakott volna markdown blokkot
                     generatedText = generatedText.replace(/```html/g, '').replace(/```/g, '').trim();
 
-                    // Hozzáadjuk a kötelező CSS/Link blokkot az elejére
-                    const finalHtmlOutput = MANDATORY_HTML_PREFIX + generatedText;
-
-                    updateState({ generationResult: finalHtmlOutput });
+                    updateState({ translationResult: generatedText });
                 } else {
                     throw new Error('Nem érkezett értelmezhető válasz az AI-tól. Lehet, hogy a promptot elutasították (safety filter).');
                 }
 
             } catch (err) {
-                updateState({ error: err.message || 'Ismeretlen hiba történt a generálás során.' });
+                updateState({ error: err.message || 'Ismeretlen hiba történt a fordítás során.' });
             } finally {
-                updateState({ isGenerating: false });
+                updateState({ isTranslating: false });
             }
         }
 
@@ -330,36 +223,31 @@ TECHNIKAI KÖVETELMÉNYEK:
             document.body.appendChild(textarea);
             textarea.select();
             try {
-                // document.execCommand('copy') is used for compatibility in iframes
-                document.execCommand('copy');
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    console.log('Sikeresen másolva a vágólapra!');
+                }
             } catch (err) {
                 console.error('Nem sikerült másolni a vágólapra: ', err);
             }
             document.body.removeChild(textarea);
-
-            // Rövid visszajelzés (pl. a másolás gomb animálása)
-            const copyBtn = document.getElementById('copy-result-btn');
-            if (copyBtn) {
-                copyBtn.textContent = ' Másolva! ';
-                copyBtn.classList.add('bg-green-500', 'text-white');
-                setTimeout(() => {
-                    copyBtn.textContent = ' Eredmény Másolása ';
-                    copyBtn.classList.remove('bg-green-500', 'text-white');
-                    copyBtn.classList.add('bg-purple-100', 'text-purple-800');
-                }, 1000);
-            }
         }
 
         // --- DOM Renderelés és Menedzsment ---
 
         function updateState(newState) {
+            // State frissítése
             state = { ...state, ...newState };
 
             // Side-effektek kezelése
+            if (newState.htmlInput !== undefined) {
+                updateStats();
+            }
             if (newState.rawKeywords !== undefined) {
                 parseKeywords();
             }
 
+            // Újrarenderelés
             render();
         }
 
@@ -375,282 +263,380 @@ TECHNIKAI KÖVETELMÉNYEK:
         // Fő App Komponens (HTML-t ad vissza)
         function App() {
             const container = document.createElement('div');
-            container.className = "max-w-6xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col min-h-[700px]";
+            container.className = "max-w-6xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[700px]";
             container.innerHTML = `
-                <!-- Fejléc -->
-                <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 md:p-8 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        ${getIcon('Package', 'w-8 h-8 text-yellow-400 icon')}
+                <div class="w-full md:w-64 bg-slate-900 text-white p-6 flex flex-col">
+                    <div class="mb-8 flex items-center gap-2">
+                        ${getIcon('Globe', 'w-6 h-6 text-green-400 icon')}
                         <div>
-                            <h1 class="text-2xl font-extrabold tracking-tight">Kategória Leírás Generátor</h1>
-                            <span class="text-sm text-slate-400">SEO-barát HTML kód generálás</span>
+                            <h1 class="text-xl font-bold tracking-tight">SEO Fordító</h1>
+                            <span class="text-xs text-slate-400">Gemini AI Integráció</span>
+                        </div>
+                    </div>
+                    
+                    <nav class="space-y-2 flex-1">
+                        ${renderNavButton('input', 'HTML Forrás', 'Code')}
+                        ${renderNavButton('keywords', 'Kulcsszó Volumen', 'BarChart')}
+                        ${renderNavButton('translate', 'AI Fordítás', 'Zap', 'purple-600')}
+                    </nav>
+
+                    <div class="mt-auto pt-6 border-t border-slate-700 text-xs text-slate-400">
+                        <p>Státusz:</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div class="w-2 h-2 rounded-full ${state.apiKey ? 'bg-green-500' : 'bg-red-500'}"></div>
+                            <span>${state.apiKey ? 'API Kulcs Megadva' : 'Nincs API Kulcs'}</span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div class="w-2 h-2 rounded-full bg-blue-400"></div>
+                            <span>Aktív Modell: ${state.modelName.replace('gemini-', '')}</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Fő Layout -->
-                <div class="flex flex-col md:flex-row flex-1">
-                    <!-- Bal oldal: Input és Beállítások -->
-                    <div class="w-full md:w-1/2 p-6 md:p-8 border-r border-gray-100 bg-gray-50/50 flex flex-col">
-                        <h2 class="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
-                            ${getIcon('Settings', 'w-5 h-5 text-purple-600 icon')}
-                            Input és Kulcsszavak
-                        </h2>
-                        
-                        <!-- Kategória Téma -->
-                        <div class="mb-4">
-                            <label for="category-topic" class="block text-sm font-medium text-gray-700 mb-1">Kategória Téma / Termékcsoport Célja (Kötelező)</label>
-                            <input
-                                id="category-topic"
-                                type="text"
-                                value="${state.categoryTopic}"
-                                placeholder="Pl.: Fekete gránit mosogatók előnyei és választása"
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-shadow"
-                            />
-                        </div>
+                <div class="flex-1 p-6 md:p-8 overflow-y-auto bg-gray-50/50">
+                    ${renderContent()}
+                </div>
+            `;
+            return container;
+        }
 
-                        <!-- Kiegészítő Kontextus -->
-                        <div class="mb-4">
-                            <label for="additional-context-textarea" class="block text-sm font-medium text-gray-700 mb-1">Kiegészítő Információk / Alkategóriák és URL-ek (Opcionális)</label>
-                            <textarea
-                                id="additional-context-textarea"
-                                class="w-full h-28 p-3 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none shadow-sm"
-                                placeholder="Ide írhatsz plusz infót, pl.:
-Alkategória: Mosogató csaptelepek (https://example.com/csaptelepek)
-Alkategória: Beépíthető mosogatógépek (https://example.com/mosogatogepek)"
-                            >${state.additionalContext}</textarea>
-                             <p class="text-xs text-gray-500 mt-1">
-                                A szövegben a megadott alkategóriákat kreatív címmel, bekezdésben, linkkel ellátva kell szerepeltetni.
-                            </p>
-                        </div>
+        function renderNavButton(tabName, label, iconName, color = 'green-600') {
+            const isActive = state.activeTab === tabName;
+            const activeClass = isActive ? `bg-${color} text-white shadow-lg` : 'hover:bg-slate-800 text-slate-300';
+            const icon = getIcon(iconName, 'w-5 h-5 icon');
 
-                        <!-- Kulcsszavak -->
-                        <div class="flex-1 flex flex-col mb-4 min-h-[200px]">
-                            <label for="keywords-input-textarea" class="block text-sm font-medium text-gray-700 mb-1">Kulcsszavak (KW: szó=szám formátum)</label>
+            return `
+                <button 
+                    data-tab="${tabName}"
+                    class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeClass}"
+                >
+                    ${icon}
+                    <span>${label}</span>
+                </button>
+            `;
+        }
+
+        function renderContent() {
+            switch (state.activeTab) {
+                case 'input':
+                    return renderInputTab();
+                case 'keywords':
+                    return renderKeywordsTab();
+                case 'translate':
+                    return renderTranslateTab();
+                default:
+                    return '';
+            }
+        }
+
+        function renderInputTab() {
+            const icon = getIcon('Code', 'w-6 h-6 text-blue-600 icon');
+            const arrowIcon = getIcon('ArrowRight', 'w-4 h-4 icon');
+
+            return `
+                <div class="h-full flex flex-col animate-in fade-in duration-300">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+                        ${icon}
+                        Forráskód
+                    </h2>
+                    <div class="flex-1 relative shadow-sm">
+                        <textarea
+                            id="html-input-textarea"
+                            class="w-full h-full min-h-[400px] p-4 font-mono text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
+                            placeholder="Illeszd be ide a cseh HTML kódot..."
+                        >${state.htmlInput}</textarea>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center text-sm text-gray-500">
+                        <span>${state.stats.chars} karakter, ${state.stats.tags} HTML elem</span>
+                        <button 
+                            data-action="goto-keywords"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium"
+                        >
+                            Tovább ${arrowIcon}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderKeywordsTab() {
+            const chartIcon = getIcon('BarChart', 'w-6 h-6 text-green-600 icon');
+            const zapIcon = getIcon('Zap', 'w-5 h-5 icon');
+
+            const keywordRows = state.parsedKeywords.map((item, idx) => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="px-4 py-2 font-medium text-gray-800">${item.word}</td>
+                    <td class="px-4 py-2 text-right font-mono text-gray-600">${item.volume}</td>
+                </tr>
+            `).join('');
+
+            const previewContent = state.parsedKeywords.length === 0 ? `
+                <div class="p-4 text-center text-gray-400">
+                    Nincs kulcsszó megadva.
+                </div>
+            ` : `
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-gray-500 bg-gray-50 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-2">Kulcsszó</th>
+                            <th class="px-4 py-2 text-right">Volumen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${keywordRows}
+                    </tbody>
+                </table>
+            `;
+
+            return `
+                <div class="h-full flex flex-col animate-in fade-in duration-300">
+                    <h2 class="text-2xl font-bold mb-2 text-gray-800 flex items-center gap-2">
+                        ${chartIcon}
+                        Kulcsszó Volumen Import
+                    </h2>
+                    <p class="text-sm text-gray-500 mb-6">
+                        Illeszd be a listát (Formátum: <code>kulcsszó 120</code>). **Alapértelmezetten üres.**
+                    </p>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                        <div class="flex flex-col">
                             <textarea
                                 id="keywords-input-textarea"
-                                class="flex-1 w-full min-h-[150px] p-3 font-mono text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none shadow-sm"
+                                class="flex-1 min-h-[300px] p-4 font-mono text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none resize-none bg-white shadow-sm"
                                 placeholder="Pl.:
-fekete gránit mosogató=1200
-gránit mosogató fekete=800
-konyhai mosogató=350
-fekete mosogató=200"
+dvd író 320
+cd író 260
+cd olvasó 260"
                             >${state.rawKeywords}</textarea>
-                        </div>
-
-                        <!-- Kulcsszó Preview -->
-                        <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm mb-4">
-                            <h4 class="text-xs font-bold text-gray-600 uppercase mb-2">Felismerve: ${state.parsedKeywords.length} db</h4>
-                            <div class="max-h-24 overflow-y-auto text-sm text-gray-700">
-                                ${state.parsedKeywords.length === 0
-                    ? '<p class="text-xs text-gray-400 italic">Nincs érvényes kulcsszó. Kérlek használd a szó=szám formátumot.</p>'
-                    : state.parsedKeywords.map(k => `<span class="inline-block bg-purple-100 text-purple-800 rounded-full px-2 py-0.5 text-xs mr-1 mb-1">${k.word} (${k.volume})</span>`).join('')
-                }
+                            <div class="mt-4 bg-white p-4 rounded-lg border border-gray-200">
+                                <h3 class="font-semibold text-gray-900 mb-3 text-sm">Hangnem (Tone)</h3>
+                                <div class="flex gap-2">
+                                    ${['persuasive', 'neutral', 'technical'].map(t => `
+                                        <button
+                                            data-tone="${t}"
+                                            class="tone-btn flex-1 px-2 py-2 rounded border text-xs font-medium transition-colors ${state.tone === t
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                    }"
+                                        >
+                                            ${t === 'persuasive' ? 'Webshop' : t === 'neutral' ? 'Semleges' : 'Műszaki'}
+                                        </button>
+                                    `).join('')}
+                                </div>
                             </div>
                         </div>
 
-                        <!-- API Key Input -->
-                        <div class="pt-4 border-t border-gray-100">
-                            <label for="api-key-input" class="block text-sm font-medium text-gray-700 mb-1">Gemini API Kulcs</label>
+                        <div class="flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                            <div class="bg-gray-100 p-3 border-b border-gray-200 flex justify-between items-center">
+                                <span class="text-xs font-bold text-gray-600 uppercase">Felismerve (${state.parsedKeywords.length})</span>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-0 max-h-[400px]">
+                                ${previewContent}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button 
+                            data-action="goto-translate"
+                            class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-colors shadow-lg font-semibold"
+                        >
+                            ${zapIcon} Tovább a Fordításhoz
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTranslateTab() {
+            const zapIcon = getIcon('Zap', 'w-6 h-6 text-purple-600 icon');
+            const loaderIcon = getIcon('Loader2', 'w-4 h-4 animate-spin icon');
+            const runIcon = getIcon('Zap', 'w-4 h-4 icon');
+            const alertIcon = getIcon('AlertCircle', 'w-5 h-5 icon');
+            const copyIcon = getIcon('Copy', 'w-3 h-3 icon');
+
+            const modelButtons = models.map(model => `
+                <button
+                    data-model="${model.name}"
+                    class="model-btn flex-1 text-center py-2 rounded-lg text-xs font-medium transition-colors ${state.modelName === model.name
+                    ? 'bg-purple-600 text-white shadow-lg'
+                    : 'text-slate-300 hover:bg-slate-700'
+                }"
+                    title="${model.label}"
+                >
+                    ${model.name.replace('gemini-', '').toUpperCase()}
+                </button>
+            `).join('');
+
+            const translateButtonContent = state.isTranslating
+                ? `${loaderIcon} Fordítás...`
+                : `${runIcon} Indítás`;
+
+            return `
+                <div class="h-full flex flex-col animate-in fade-in duration-300">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+                        ${zapIcon}
+                        AI Fordítás Futtatása
+                    </h2>
+
+                    <div class="bg-slate-800 text-white p-4 rounded-lg mb-6 shadow-md">
+                        
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">
+                                Gemini Modell Változat
+                            </label>
+                            <div class="grid grid-cols-2 md:grid-cols-4 bg-slate-900 rounded-lg p-1 gap-1">
+                                ${modelButtons}
+                            </div>
+                        </div>
+
+                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">
+                            Gemini API Kulcs
+                        </label>
+                        <div class="flex gap-2">
                             <input 
                                 id="api-key-input"
                                 type="password" 
                                 value="${state.apiKey}"
                                 placeholder="AIzaSy..."
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none font-mono text-sm"
+                                class="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none font-mono"
                             />
-                            <p class="text-xs text-gray-500 mt-1">
-                                Szükséges a generáláshoz.
-                            </p>
+                            <button 
+                                id="translate-btn"
+                                ${state.isTranslating || !state.apiKey ? 'disabled' : ''}
+                                class="px-6 py-2 rounded font-bold text-sm flex items-center gap-2 transition-all ${state.isTranslating
+                                    ? 'bg-slate-600 cursor-wait'
+                                    : !state.apiKey
+                                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                        : 'bg-purple-500 hover:bg-purple-400 text-white shadow-lg'
+                                }"
+                            >
+                                ${translateButtonContent}
+                            </button>
                         </div>
-                        
-                        <!-- Input Karakter Számláló (ÚJ) -->
-                        <div class="mt-4 p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-                            <p class="text-sm text-gray-700 font-semibold flex items-center justify-between">
-                                <span class="flex items-center gap-2">
-                                    ${getIcon('FileText', 'w-4 h-4 text-purple-600 icon')}
-                                    Bemeneti Prompt mérete (karakter):
-                                </span> 
-                                <span class="font-mono text-base font-bold text-purple-700">${getInputCharCount().toLocaleString('hu-HU')}</span>
+                        ${!state.apiKey ? `
+                            <p class="text-xs text-slate-400 mt-2">
+                                Szükséges egy API kulcs a <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" class="text-purple-400 underline hover:text-purple-300">Google AI Studio</a>-ból.
                             </p>
-                        </div>
-
-
+                        ` : ''}
                     </div>
 
-                    <!-- Jobb oldal: Generálás és Eredmény -->
-                    <div class="w-full md:w-1/2 p-6 md:p-8 flex flex-col">
-                        <h2 class="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
-                            ${getIcon('Feather', 'w-5 h-5 text-green-600 icon')}
-                            Generálás és Kimenet
-                        </h2>
-
-                        <!-- Modell kiválasztás -->
-                        <div class="mb-4 bg-gray-100 p-3 rounded-lg">
-                             <label class="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">
-                                Gemini Modell Változat
-                            </label>
-                            <div class="flex justify-between items-center bg-white rounded-lg p-1 space-x-1 border border-gray-200">
-                                ${models.map(model => `
-                                    <button
-                                        data-model="${model.name}"
-                                        title="${model.label}"
-                                        class="model-btn flex-1 text-center py-2 rounded-md text-xs font-semibold transition-colors ${state.modelName === model.name
-                        ? 'bg-green-600 text-white shadow-md'
-                        : 'text-gray-600 hover:bg-gray-200'
-                    }"
-                                    >
-                                        ${model.name.replace('gemini-', '').toUpperCase()}
-                                    </button>
-                                `).join('')}
-                            </div>
+                    ${state.error ? `
+                        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
+                            ${alertIcon}
+                            ${state.error}
                         </div>
+                    ` : ''}
 
-                        <!-- Hibaüzenet -->
-                        ${state.error ? `
-                            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2 text-sm">
-                                ${getIcon('AlertTriangle', 'w-5 h-5 icon')}
-                                ${state.error}
-                            </div>
-                        ` : ''}
-                        
-                        <!-- Műveleti gomb -->
-                        <button 
-                            id="generate-btn"
-                            ${state.isGenerating || !state.apiKey || !state.categoryTopic || state.parsedKeywords.length === 0 ? 'disabled' : ''}
-                            class="w-full px-6 py-3 rounded-lg font-bold text-lg flex items-center justify-center gap-3 transition-all ${state.isGenerating
-                    ? 'bg-gray-400 cursor-wait'
-                    : (!state.apiKey || !state.categoryTopic || state.parsedKeywords.length === 0)
-                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                        : 'bg-green-600 hover:bg-green-700 text-white shadow-xl shadow-green-200'
-                }"
-                        >
-                            ${state.isGenerating
-                    ? `${getIcon('Loader2', 'w-5 h-5 animate-spin icon')} HTML Leírás Generálása...`
-                    : `${getIcon('Feather', 'w-5 h-5 icon')} Generálás Indítása`
-                }
-                        </button>
-                        
-                        <!-- Prompt Preview toggle, Copy button és Output Counter -->
-                        <div class="mt-4 flex justify-between items-center text-sm">
-                            <!-- Bal oldali rész (Prompt toggle és Output Counter) -->
-                            <div class="flex items-center gap-4">
+                    <div class="flex-1 flex flex-col min-h-0">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-semibold text-gray-700 flex items-center gap-2">
+                                ${state.translationResult ? 'Lefordított HTML' : 'Eredmény:'}
+                                ${state.translationResult ? `<span class="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">${state.translationResult.length} karakter</span>` : ''}
+                            </h3>
+                            <div class="flex gap-2">
                                 <button
                                     id="toggle-prompt-preview"
-                                    class="text-gray-500 hover:text-purple-600 underline"
+                                    class="text-xs text-gray-500 hover:text-purple-600 underline"
                                 >
                                     ${state.showPromptPreview ? 'Prompt elrejtése' : 'Prompt megtekintése (Debug)'}
                                 </button>
-                                ${state.generationResult ? `
-                                    <p class="text-gray-700 font-semibold flex items-center gap-2">
-                                        ${getIcon('SquareDashedBottom', 'w-4 h-4 text-green-500 icon')}
-                                        Kimenet karakterek: 
-                                        <span class="font-mono text-green-700">${getOutputCharCount().toLocaleString('hu-HU')}</span>
-                                    </p>
-                                ` : ''}
-                            </div>
-                            
-                            <!-- Jobb oldali rész (Copy button) -->
-                            <div class="flex gap-2">
-                                ${state.generationResult ? `
+                                ${state.translationResult ? `
                                     <button
                                         id="copy-result-btn"
-                                        class="bg-purple-100 hover:bg-purple-200 text-purple-800 px-3 py-1 rounded border border-purple-300 flex items-center gap-1 transition-colors font-medium"
+                                        class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded border border-gray-300 flex items-center gap-1 transition-colors"
                                     >
-                                        ${getIcon('Copy', 'w-3 h-3 icon')} Eredmény Másolása
+                                        ${copyIcon} Másolás
                                     </button>
                                 ` : ''}
                             </div>
                         </div>
 
-
-                        <!-- Prompt Preview (Toggleable) -->
                         ${state.showPromptPreview ? `
-                            <div class="my-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs font-mono text-yellow-800 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                            <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs font-mono text-yellow-800 whitespace-pre-wrap max-h-40 overflow-y-auto">
                                 ${constructPrompt()}
                             </div>
                         ` : ''}
 
-                        <!-- Output Editor -->
-                        <div class="flex-1 mt-4 relative border border-gray-300 rounded-lg overflow-hidden bg-white shadow-inner min-h-[300px]">
-                            ${state.generationResult ? `
+                        <div class="flex-1 relative border border-gray-300 rounded-lg overflow-hidden bg-white shadow-inner">
+                            ${state.isTranslating ? `
+                                <div class="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm z-10">
+                                    <svg class="w-10 h-10 text-purple-600 animate-spin mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <p class="text-purple-900 font-medium">Az AI dolgozik a szövegen...</p>
+                                    <p class="text-xs text-purple-700 mt-1">Ez eltarthat pár másodpercig.</p>
+                                </div>
+                            ` : state.translationResult ? `
                                 <textarea
                                     readonly
                                     id="result-textarea"
                                     class="w-full h-full p-4 font-mono text-sm bg-gray-50 text-gray-800 outline-none resize-none"
-                                >${state.generationResult}</textarea>
+                                >${state.translationResult}</textarea>
                             ` : `
                                 <div class="w-full h-full flex flex-col items-center justify-center text-gray-400 p-8 text-center">
-                                    ${getIcon('Package', 'w-12 h-12 mb-3 opacity-20 icon')}
-                                    <p>Add meg a beállításokat és nyomd meg a Generálás gombot!</p>
+                                    ${getIcon('Zap', 'w-12 h-12 mb-3 opacity-20 icon')}
+                                    <p>Kattints az "Indítás" gombra a fenti sávban a fordításhoz.</p>
                                 </div>
                             `}
                         </div>
                     </div>
                 </div>
             `;
-            return container;
         }
 
 
         // --- Eseménykezelők Csatolása ---
 
         function attachEventListeners() {
-            // Kategória Téma Input
-            const topicInput = document.getElementById('category-topic');
-            if (topicInput) {
-                topicInput.oninput = (e) => updateState({ categoryTopic: e.target.value });
+            // Navigációs gombok
+            document.querySelectorAll('.tab-btn').forEach(button => {
+                button.onclick = () => updateState({ activeTab: button.dataset.tab });
+            });
+
+            // Input Tab
+            const htmlInputTextarea = document.getElementById('html-input-textarea');
+            if (htmlInputTextarea) {
+                htmlInputTextarea.oninput = (e) => updateState({ htmlInput: e.target.value });
+                const gotoKeywords = document.querySelector('[data-action="goto-keywords"]');
+                if (gotoKeywords) gotoKeywords.onclick = () => updateState({ activeTab: 'keywords' });
             }
 
-            // Kiegészítő Kontextus Input
-            const contextInput = document.getElementById('additional-context-textarea');
-            if (contextInput) {
-                contextInput.oninput = (e) => updateState({ additionalContext: e.target.value });
-            }
-
-            // Kulcsszavak Input
+            // Keywords Tab
             const keywordsInputTextarea = document.getElementById('keywords-input-textarea');
             if (keywordsInputTextarea) {
                 keywordsInputTextarea.oninput = (e) => updateState({ rawKeywords: e.target.value });
+                document.querySelectorAll('.tone-btn').forEach(button => {
+                    button.onclick = () => updateState({ tone: button.dataset.tone });
+                });
+                const gotoTranslate = document.querySelector('[data-action="goto-translate"]');
+                if (gotoTranslate) gotoTranslate.onclick = () => updateState({ activeTab: 'translate' });
             }
 
-            // API Key Input
+            // Translate Tab
             const apiKeyInput = document.getElementById('api-key-input');
             if (apiKeyInput) {
                 apiKeyInput.oninput = (e) => updateState({ apiKey: e.target.value });
-            }
+                const translateBtn = document.getElementById('translate-btn');
+                if (translateBtn) translateBtn.onclick = handleTranslation;
 
-            // Modell kiválasztás
-            document.querySelectorAll('.model-btn').forEach(button => {
-                button.onclick = () => updateState({ modelName: button.dataset.model });
-            });
+                document.querySelectorAll('.model-btn').forEach(button => {
+                    button.onclick = () => updateState({ modelName: button.dataset.model });
+                });
 
-            // Generálás gomb
-            const generateBtn = document.getElementById('generate-btn');
-            if (generateBtn) {
-                generateBtn.onclick = handleGeneration;
-            }
+                const togglePromptBtn = document.getElementById('toggle-prompt-preview');
+                if (togglePromptBtn) {
+                    togglePromptBtn.onclick = () => updateState({ showPromptPreview: !state.showPromptPreview });
+                }
 
-            // Prompt Preview
-            const togglePromptBtn = document.getElementById('toggle-prompt-preview');
-            if (togglePromptBtn) {
-                togglePromptBtn.onclick = () => updateState({ showPromptPreview: !state.showPromptPreview });
-            }
-
-            // Másolás gomb
-            const copyBtn = document.getElementById('copy-result-btn');
-            if (copyBtn) {
-                copyBtn.onclick = () => {
-                    const resultTextarea = document.getElementById('result-textarea');
-                    if (resultTextarea) {
-                        copyToClipboard(resultTextarea.value);
-                    }
-                };
+                const copyBtn = document.getElementById('copy-result-btn');
+                if (copyBtn) {
+                    copyBtn.onclick = () => copyToClipboard(state.translationResult);
+                }
             }
         }
 
         // --- Alkalmazás Indítása ---
         window.onload = function () {
+            updateStats(); // Kezdő statisztikák
             parseKeywords(); // Kezdő kulcsszó elemzés
             render(); // Első renderelés
         };
